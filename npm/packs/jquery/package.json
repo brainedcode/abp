@@ -1,12 +1,12 @@
 {
-  "version": "0.9.2",
+  "version": "2.7.0",
   "name": "@abp/jquery",
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@abp/core": "^0.9.2",
+    "@abp/core": "^2.7.0",
     "jquery": "^3.4.1"
   },
-  "gitHead": "4d6791834b7723d8ad78ba4d23ae3425f170fdeb"
+  "gitHead": "0ea3895f3b0b489e3ea81fc88f8f0896b22b61bd"
 }

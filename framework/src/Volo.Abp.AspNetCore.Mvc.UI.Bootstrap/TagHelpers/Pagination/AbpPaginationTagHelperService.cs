@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System;
+using System.Linq;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Localization.Resources.AbpUi;
@@ -123,6 +125,8 @@ namespace Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Pagination
 
             var tagHelperOutput = await anchorTagHelper.ProcessAndGetOutputAsync(attributeList, context, "a", TagMode.StartTagAndEndTag);
 
+            SetHrefAttribute(currentPage, attributeList);
+
             tagHelperOutput.Content.SetHtmlContent(localizer[localizationKey]);
 
             var renderedHtml = tagHelperOutput.Render(_encoder);
@@ -155,7 +159,7 @@ namespace Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Pagination
             var localizer = _tagHelperLocalizer.GetLocalizer(typeof(AbpUiResource));
 
             var pagerInfo = (TagHelper.ShowInfo ?? false) ?
-                "    <div class=\"col-sm-12 col-md-5\"> " + localizer["PagerInfo", TagHelper.Model.ShowingFrom, TagHelper.Model.ShowingTo, TagHelper.Model.TotalItemsCount] + "</div>\r\n"
+                "    <div class=\"col-sm-12 col-md-5\"> " + localizer["PagerInfo{0}{1}{2}", TagHelper.Model.ShowingFrom, TagHelper.Model.ShowingTo, TagHelper.Model.TotalItemsCount] + "</div>\r\n"
                 : "";
 
             return
@@ -171,6 +175,21 @@ namespace Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Pagination
                 "            </ul>\r\n" +
                 "         </ nav>\r\n" +
                 "    </div>\r\n";
+        }
+
+        protected virtual void SetHrefAttribute(string currentPage, TagHelperAttributeList attributeList)
+        {
+            var hrefAttribute = attributeList.FirstOrDefault(x => x.Name.Equals("href", StringComparison.OrdinalIgnoreCase));
+
+            if (hrefAttribute != null)
+            {
+                var pageUrl = TagHelper.Model.PageUrl;
+                var routeValue = $"currentPage={currentPage}{(TagHelper.Model.Sort.IsNullOrWhiteSpace()? "" : "&sort="+TagHelper.Model.Sort)}";
+                pageUrl += pageUrl.Contains("?") ? "&" + routeValue : "?" + routeValue;
+
+                attributeList.Remove(hrefAttribute);
+                attributeList.Add(new TagHelperAttribute("href", pageUrl, hrefAttribute.ValueStyle));
+            }
         }
     }
 }

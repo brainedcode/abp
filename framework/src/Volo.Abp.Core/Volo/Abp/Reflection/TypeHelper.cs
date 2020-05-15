@@ -1,6 +1,10 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using JetBrains.Annotations;
 
 namespace Volo.Abp.Reflection
 {
@@ -12,7 +16,7 @@ namespace Volo.Abp.Reflection
             {
                 return false;
             }
-
+            
             var type = obj.GetType();
             if (!type.GetTypeInfo().IsGenericType)
             {
@@ -34,14 +38,17 @@ namespace Volo.Abp.Reflection
                 return true;
             }
 
-            if (includeNullables &&
-                type.IsGenericType &&
-                type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            if (includeNullables && IsNullable(type))
             {
                 return IsPrimitiveExtendedInternal(type.GenericTypeArguments[0], includeEnums);
             }
 
             return false;
+        }
+
+        public static bool IsNullable(Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
 
         public static Type GetFirstGenericArgumentIfNullable(this Type t)
@@ -52,6 +59,59 @@ namespace Volo.Abp.Reflection
             }
 
             return t;
+        }
+
+        public static bool IsEnumerable(Type type, out Type itemType, bool includePrimitives = true)
+        {
+            if (!includePrimitives && IsPrimitiveExtended(type))
+            {
+                itemType = null;
+                return false;
+            }
+
+            var enumerableTypes = ReflectionHelper.GetImplementedGenericTypes(type, typeof(IEnumerable<>));
+            if (enumerableTypes.Count == 1)
+            {
+                itemType = enumerableTypes[0].GenericTypeArguments[0];
+                return true;
+            }
+
+            if (typeof(IEnumerable).IsAssignableFrom(type))
+            {
+                itemType = typeof(object);
+                return true;
+            }
+
+            itemType = null;
+            return false;
+        }
+
+        public static bool IsDictionary(Type type, out Type keyType, out Type valueType)
+        {
+            var dictionaryTypes = ReflectionHelper
+                .GetImplementedGenericTypes(
+                    type,
+                    typeof(IDictionary<,>)
+                );
+
+            if (dictionaryTypes.Count == 1)
+            {
+                keyType = dictionaryTypes[0].GenericTypeArguments[0];
+                valueType = dictionaryTypes[0].GenericTypeArguments[1];
+                return true;
+            }
+
+            if (typeof(IDictionary).IsAssignableFrom(type))
+            {
+                keyType = typeof(object);
+                valueType = typeof(object);
+                return true;
+            }
+
+            keyType = null;
+            valueType = null;
+
+            return false;
         }
 
         private static bool IsPrimitiveExtendedInternal(Type type, bool includeEnums)
@@ -72,6 +132,150 @@ namespace Volo.Abp.Reflection
                    type == typeof(DateTimeOffset) ||
                    type == typeof(TimeSpan) ||
                    type == typeof(Guid);
+        }
+
+        public static T GetDefaultValue<T>()
+        {
+            return default;
+        }
+
+        public static object GetDefaultValue(Type type)
+        {
+            if (type.IsValueType)
+            {
+                return Activator.CreateInstance(type);
+            }
+
+            return null;
+        }
+
+        public static string GetFullNameHandlingNullableAndGenerics([NotNull] Type type)
+        {
+            Check.NotNull(type, nameof(type));
+
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                return type.GenericTypeArguments[0].FullName + "?";
+            }
+
+            if (type.IsGenericType)
+            {
+                var genericType = type.GetGenericTypeDefinition();
+                return $"{genericType.FullName.Left(genericType.FullName.IndexOf('`'))}<{type.GenericTypeArguments.Select(GetFullNameHandlingNullableAndGenerics).JoinAsString(",")}>";
+            }
+
+            return type.FullName;
+        }
+
+        public static string GetSimplifiedName([NotNull] Type type)
+        {
+            Check.NotNull(type, nameof(type));
+
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                return GetSimplifiedName(type.GenericTypeArguments[0]) + "?";
+            }
+
+            if (type.IsGenericType)
+            {
+                var genericType = type.GetGenericTypeDefinition();
+                return $"{genericType.FullName.Left(genericType.FullName.IndexOf('`'))}<{type.GenericTypeArguments.Select(GetSimplifiedName).JoinAsString(",")}>";
+            }
+
+            if (type == typeof(string))
+            {
+                return "string";
+            }
+            else if (type == typeof(int))
+            {
+                return "number";
+            }
+            else if (type == typeof(long))
+            {
+                return "number";
+            }
+            else if (type == typeof(bool))
+            {
+                return "boolean";
+            }
+            else if (type == typeof(char))
+            {
+                return "string";
+            }
+            else if (type == typeof(double))
+            {
+                return "number";
+            }
+            else if (type == typeof(float))
+            {
+                return "number";
+            }
+            else if (type == typeof(decimal))
+            {
+                return "number";
+            }
+            else if (type == typeof(DateTime))
+            {
+                return "string";
+            }
+            else if (type == typeof(DateTimeOffset))
+            {
+                return "string";
+            }
+            else if (type == typeof(TimeSpan))
+            {
+                return "string";
+            }
+            else if (type == typeof(Guid))
+            {
+                return "string";
+            }
+            else if (type == typeof(byte))
+            {
+                return "number";
+            }
+            else if (type == typeof(sbyte))
+            {
+                return "number";
+            }
+            else if (type == typeof(short))
+            {
+                return "number";
+            }
+            else if (type == typeof(ushort))
+            {
+                return "number";
+            }
+            else if (type == typeof(uint))
+            {
+                return "number";
+            }
+            else if (type == typeof(ulong))
+            {
+                return "number";
+            }
+            else if (type == typeof(IntPtr))
+            {
+                return "number";
+            }
+            else if (type == typeof(UIntPtr))
+            {
+                return "number";
+            }
+
+            return type.FullName;
+        }
+
+        public static object ConvertFromString<TTargetType>(string value)
+        {
+            return ConvertFromString(typeof(TTargetType), value);
+        }
+
+        public static object ConvertFromString(Type targetType, string value)
+        {
+            return TypeDescriptor
+                .GetConverter(targetType)
+                .ConvertFromString(value);
         }
     }
 }
